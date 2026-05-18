@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ FATE PREDICTOR ✦</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0812;
+    --bg2: #100e1a;
+    --panel: #13101f;
+    --border: rgba(200,160,255,0.18);
+    --accent: #c89aff;
+    --accent2: #ff8fc8;
+    --accent3: #8fdfff;
+    --gold: #ffd77a;
+    --text: #e8deff;
+    --muted: rgba(200,180,255,0.45);
+    --eliminated: rgba(255,80,120,0.18);
+    --elim-text: rgba(255,100,130,0.45);
+    --ring-color: rgba(200,154,255,0.22);
+    --glow: 0 0 30px rgba(200,154,255,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Pro', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield bg */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 30%, rgba(120,60,200,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(60,120,200,0.1) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 50%, rgba(200,100,150,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .stars {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: white;
+    animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
+  }
+  @keyframes twinkle {
+    0%,100% { opacity: var(--min-op, 0.1); transform: scale(1); }
+    50% { opacity: var(--max-op, 0.7); transform: scale(1.3); }
+  }
+
+  /* ---- HEADER ---- */
+  header {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 36px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(1.4rem, 4vw, 2.8rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, var(--gold), var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 18px rgba(200,154,255,0.5));
+  }
+  .header-sub {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.15em;
+  }
+
+  /* ---- PERSON X BAR ---- */
+  .personx-bar {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 24px;
+    background: linear-gradient(90deg, rgba(200,154,255,0.08), transparent);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .personx-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .fancy-input {
+    background: rgba(200,154,255,0.07);
+    border: 1px solid rgba(200,154,255,0.3);
+    border-radius: 6px;
+    padding: 5px 12px;
+    color: var(--text);
+    font-family: 'Crimson Pro', serif;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-width: 120px;
+  }
+  .fancy-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(200,154,255,0.2);
+  }
+
+  /* ---- GRID LAYOUT ---- */
+  .grid-wrap {
+    position: relative; z-index: 5;
+    display: grid;
+    grid-template-columns: 100px 1fr 130px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    padding: 16px 16px 16px;
+    min-height: calc(100vh - 160px);
+    align-items: start;
+  }
+
+  /* TOP AXIS - Partners */
+  .axis-top {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding-bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .axis-top-inner {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .axis-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--accent3);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .partners-row {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  }
+
+  /* LEFT AXIS - Children */
+  .axis-left {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-around;
+    padding-right: 12px;
+    padding-top: 0;
+    gap: 0;
+  }
+  .axis-left-inner {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 0; height: 100%;
+  }
+  .axis-left-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--accent2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: right;
+    margin-bottom: 6px;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    align-self: center;
+  }
+
+  /* RIGHT AXIS - Housing */
+  .axis-right {
+    grid-column: 3;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-left: 12px;
+    gap: 0;
+  }
+  .axis-right-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--gold);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    writing-mode: vertical-rl;
+    align-self: center;
+  }
+
+  /* CENTER - Canvas Area */
+  .center-area {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+  }
+  #fateCanvas {
+    border-radius: 50%;
+    display: block;
+    cursor: pointer;
+  }
+
+  /* BOTTOM AXIS - Relationship Types */
+  .axis-bottom {
+    grid-column: 2;
+    grid-row: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+  }
+  .rel-row {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  }
+
+  /* ---- OPTION CHIPS ---- */
+  .option-chip {
+    position: relative;
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(200,154,255,0.06);
+    border: 1px solid rgba(200,154,255,0.22);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.92rem;
+    color: var(--text);
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+  .option-chip.editing {
+    background: rgba(200,154,255,0.13);
+    border-color: var(--accent);
+  }
+  .option-chip input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.92rem;
+    width: 100px;
+  }
+  .option-chip.eliminated {
+    background: var(--eliminated);
+    border-color: rgba(255,80,120,0.3);
+    text-decoration: line-through;
+    color: var(--elim-text);
+    opacity: 0.6;
+  }
+  .option-chip.winner {
+    background: rgba(255,215,122,0.15);
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 16px rgba(255,215,122,0.3);
+    font-weight: 600;
+  }
+  .chip-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* Left/Right axis items */
+  .axis-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: all 0.3s;
+    flex: 1;
+    justify-content: flex-end; /* for left */
+  }
+  .axis-item.eliminated {
+    text-decoration: line-through;
+    color: var(--elim-text);
+    opacity: 0.55;
+  }
+  .axis-item.winner {
+    color: var(--gold);
+    font-weight: 600;
+  }
+  .axis-item-right {
+    justify-content: flex-start;
+  }
+
+  /* ---- CONTROLS ---- */
+  .controls-bar {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: linear-gradient(0deg, rgba(200,154,255,0.04), transparent);
+  }
+  .rings-control {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .rings-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .rings-input {
+    width: 60px;
+    text-align: center;
+  }
+
+  .btn {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    padding: 9px 22px;
+    border-radius: 30px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, rgba(200,154,255,0.2), rgba(255,143,200,0.15));
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, rgba(200,154,255,0.35), rgba(255,143,200,0.25));
+    box-shadow: 0 0 20px rgba(200,154,255,0.3);
+    transform: translateY(-1px);
+  }
+  .btn-gold {
+    background: linear-gradient(135deg, rgba(255,215,122,0.15), rgba(255,180,80,0.1));
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .btn-gold:hover {
+    background: linear-gradient(135deg, rgba(255,215,122,0.28), rgba(255,180,80,0.18));
+    box-shadow: 0 0 20px rgba(255,215,122,0.25);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: rgba(200,154,255,0.25);
+    color: var(--muted);
+    font-size: 0.65rem;
+    padding: 6px 14px;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .add-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 12px;
+    border: 1px dashed rgba(200,154,255,0.35);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .add-btn:hover {
+    background: rgba(200,154,255,0.1);
+    border-style: solid;
+  }
+
+  /* ---- FATE RESULT ---- */
+  .fate-result {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,8,18,0.88);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s;
+  }
+  .fate-result.show {
+    opacity: 1; pointer-events: all;
+  }
+  .fate-card {
+    max-width: 560px;
+    width: 90%;
+    background: var(--panel);
+    border: 1px solid rgba(255,215,122,0.4);
+    border-radius: 20px;
+    padding: 48px 40px;
+    text-align: center;
+    box-shadow: 0 0 80px rgba(255,215,122,0.12), 0 0 40px rgba(200,154,255,0.15);
+    transform: scale(0.9);
+    transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+    overflow: hidden;
+  }
+  .fate-result.show .fate-card { transform: scale(1); }
+  .fate-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,215,122,0.08) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .fate-emoji { font-size: 3rem; margin-bottom: 12px; }
+  .fate-card-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    letter-spacing: 0.18em;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+  .fate-sentence {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.4rem;
+    line-height: 1.7;
+    color: var(--text);
+    font-style: italic;
+  }
+  .fate-sentence strong {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .fate-divider {
+    width: 60px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 20px auto;
+  }
+  .fate-close {
+    margin-top: 28px;
+  }
+
+  /* ---- STEP INDICATOR ---- */
+  .step-info {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-align: center;
+    min-height: 1.4em;
+  }
+
+  /* Canvas container */
+  .canvas-container {
+    position: relative;
+    display: inline-block;
+  }
+  .canvas-hint {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: rgba(200,154,255,0.25); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Starfield -->
+<div class="stars" id="stars"></div>
+
+<!-- Fate Result Overlay -->
+<div class="fate-result" id="fateResult">
+  <div class="fate-card">
+    <div class="fate-emoji">✦</div>
+    <div class="fate-card-title">The Stars Have Spoken</div>
+    <div class="fate-divider"></div>
+    <div class="fate-sentence" id="fateSentence"></div>
+    <div class="fate-divider"></div>
+    <div class="fate-close">
+      <button class="btn btn-ghost" onclick="closeFate()">Close ✦ Try Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-title">✦ FATE PREDICTOR ✦</div>
+  <div class="header-sub">the cosmos shall decide your destiny</div>
+</header>
+
+<!-- PERSON X BAR -->
+<div class="personx-bar">
+  <span class="personx-label">⟡ The Fated One:</span>
+  <input class="fancy-input" id="personXInput" value="Alex" style="width:140px;" oninput="updatePersonX(this.value)">
+  <span style="color:var(--muted);font-size:0.85rem;margin-left:8px;font-style:italic;" id="personXDisplay">'s fate is being determined…</span>
+</div>
+
+<!-- MAIN GRID -->
+<div class="grid-wrap">
+
+  <!-- TOP: Partners -->
+  <div class="axis-top" style="grid-column:2;grid-row:1;">
+    <div class="axis-top-inner">
+      <div class="axis-title">⟡ Possible Partners ⟡</div>
+      <div class="partners-row" id="partnersRow"></div>
+      <button class="add-btn" onclick="addPartner()" style="margin-top:6px;">+ Add Partner</button>
+    </div>
+  </div>
+
+  <!-- LEFT: Children count -->
+  <div class="axis-left" style="grid-column:1;grid-row:2;">
+    <div style="display:flex;flex-direction:column;align-items:flex-end;height:100%;">
+      <div class="axis-title" style="writing-mode:vertical-rl;transform:rotate(180deg);margin-bottom:8px;color:var(--accent2);">Children</div>
+      <div id="childrenList" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:1;justify-content:space-around;"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: Canvas -->
+  <div class="center-area" style="grid-column:2;grid-row:2;">
+    <div class="canvas-container">
+      <canvas id="fateCanvas" width="340" height="340"></canvas>
+    </div>
+    <div class="canvas-hint" id="canvasHint">✦ Click the orb to begin the elimination ✦</div>
+    <div class="step-info" id="stepInfo"></div>
+  </div>
+
+  <!-- RIGHT: Housing -->
+  <div class="axis-right" style="grid-column:3;grid-row:2;">
+    <div style="display:flex;flex-direction:column;align-items:flex-start;height:100%;">
+      <div class="axis-title" style="writing-mode:vertical-rl;margin-bottom:8px;color:var(--gold);">Housing</div>
+      <div id="housingList" style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;flex:1;justify-content:space-around;"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM: Relationship type -->
+  <div style="grid-column:2;grid-row:3;display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:12px;">
+    <div class="axis-title" style="color:var(--accent3);">⟡ Partnership Methods ⟡</div>
+    <div class="rel-row" id="relRow"></div>
+  </div>
+
+</div>
+
+<!-- CONTROLS -->
+<div class="controls-bar">
+  <div class="rings-control">
+    <span class="rings-label">Rings (skip every Nth):</span>
+    <input class="fancy-input rings-input" id="ringsInput" type="number" min="2" max="10" value="3">
+  </div>
+  <button class="btn btn-primary" onclick="startPrediction()">✦ Begin Fate</button>
+  <button class="btn btn-gold" onclick="autoReveal()">⚡ Auto Reveal</button>
+  <button class="btn btn-ghost" onclick="resetAll()">↺ Reset</button>
+</div>
+
+<script>
+// ========== STARS ==========
+(function(){
+  const c = document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const s = document.createElement('div');
+    s.className='star';
+    const size = Math.random()*2.5+0.5;
+    s.style.cssText=`
+      width:${size}px;height:${size}px;
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      --dur:${2+Math.random()*4}s;
+      --delay:${-Math.random()*4}s;
+      --min-op:${0.05+Math.random()*0.1};
+      --max-op:${0.4+Math.random()*0.5};
+    `;
+    c.appendChild(s);
+  }
+})();
+
+// ========== STATE ==========
+let personX = 'Alex';
+let partners = ['Person 1','Person 2','Person 3'];
+let children = ['Too Many','6','5','4','3','2','1','0'];
+let housing = ['Shack','No Home','Apartment','Condo','Bungalow','Mansion'];
+let relationships = ['Married','Just Friends (wink)','NCMO','Cheated & Got Back'];
+
+// Elimination state
+let partnerState = [];
+let childrenState = [];
+let housingState = [];
+let relState = [];
+
+let predicting = false;
+let stepIdx = 0;
+// Clockwise order: top (partners), right (housing), bottom (rels), left (children)
+let allOptions = []; // [{group, idx}] clockwise
+let elimStep = 0; // current pointer in allOptions
+let rings = 3;
+let eliminationLog = [];
+
+// ========== RENDER AXES ==========
+function renderAll() {
+  renderPartners();
+  renderChildren();
+  renderHousing();
+  renderRelationships();
+  drawOrb();
+}
+
+function updatePersonX(v){
+  personX = v||'Alex';
+  document.getElementById('personXDisplay').textContent = `'s fate is being determined…`;
+}
+
+function chipHtml(text, group, idx, state) {
+  const cls = state[idx]==='elim'?'eliminated':(state[idx]==='win'?'winner':'');
+  return `<div class="option-chip ${cls}" id="chip-${group}-${idx}" ondblclick="editChip('${group}',${idx})">
+    <span class="chip-num">${idx+1}</span>
+    <span class="chip-text">${escHtml(text)}</span>
+  </div>`;
+}
+
+function axisItemHtml(text, group, idx, state, right=false) {
+  const cls = (state[idx]==='elim'?'eliminated':(state[idx]==='win'?'winner':'')) + (right?' axis-item-right':'');
+  return `<div class="axis-item ${cls}" id="chip-${group}-${idx}" ondblclick="editChip('${group}',${idx})">${escHtml(text)}</div>`;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderPartners(){
+  const row = document.getElementById('partnersRow');
+  row.innerHTML = partners.map((p,i)=>chipHtml(p,'partner',i,partnerState)).join('');
+}
+function renderChildren(){
+  const list = document.getElementById('childrenList');
+  list.innerHTML = children.map((c,i)=>axisItemHtml(c,'children',i,childrenState)).join('');
+}
+function renderHousing(){
+  const list = document.getElementById('housingList');
+  list.innerHTML = housing.map((h,i)=>axisItemHtml(h,'housing',i,housingState,true)).join('');
+}
+function renderRelationships(){
+  const row = document.getElementById('relRow');
+  row.innerHTML = relationships.map((r,i)=>chipHtml(r,'rel',i,relState)).join('');
+}
+
+function addPartner(){
+  partners.push('Person '+(partners.length+1));
+  partnerState.push('');
+  renderPartners();
+}
+
+function editChip(group, idx){
+  if(predicting) return;
+  const chipEl = document.getElementById(`chip-${group}-${idx}`);
+  const arr = {partner:partners,children,housing,rel:relationships}[group];
+  const state = {partner:partnerState,children:childrenState,housing:housingState,rel:relState}[group];
+  if(state[idx]==='elim'||state[idx]==='win') return;
+  const span = chipEl.querySelector('.chip-text');
+  if(!span) return;
+  const old = arr[idx];
+  span.innerHTML = `<input class="fancy-input" style="border:none;background:transparent;padding:0;width:${Math.max(80,old.length*10)}px;" value="${escHtml(old)}" onblur="saveChip('${group}',${idx},this)" onkeydown="if(event.key==='Enter')this.blur()">`;
+  span.querySelector('input').focus();
+  chipEl.classList.add('editing');
+}
+function saveChip(group,idx,inp){
+  const arr = {partner:partners,children,housing,rel:relationships}[group];
+  arr[idx] = inp.value||arr[idx];
+  renderAll();
+}
+
+// ========== ORB CANVAS ==========
+function drawOrb(highlightPos) {
+  const canvas = document.getElementById('fateCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2;
+  ctx.clearRect(0,0,W,H);
+
+  // Background glow
+  const grad = ctx.createRadialGradient(cx,cy,10,cx,cy,160);
+  grad.addColorStop(0,'rgba(140,80,220,0.18)');
+  grad.addColorStop(0.5,'rgba(80,40,150,0.08)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // Draw concentric rings
+  const numRings = parseInt(document.getElementById('ringsInput').value)||3;
+  for(let r=1;r<=numRings;r++){
+    const radius = (r/numRings)*150;
+    ctx.beginPath();
+    ctx.arc(cx,cy,radius,0,Math.PI*2);
+    ctx.strokeStyle = `rgba(${200-r*15},${140+r*8},255,${0.12+r*0.06})`;
+    ctx.lineWidth = r===numRings?1.5:1;
+    ctx.stroke();
+    // tick marks on outer ring
+    if(r===numRings){
+      for(let t=0;t<24;t++){
+        const angle = (t/24)*Math.PI*2;
+        const inner = radius-5, outer2 = radius+3;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(angle)*inner, cy+Math.sin(angle)*inner);
+        ctx.lineTo(cx+Math.cos(angle)*outer2, cy+Math.sin(angle)*outer2);
+        ctx.strokeStyle = 'rgba(200,154,255,0.2)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Center star/orb
+  const orbGrad = ctx.createRadialGradient(cx-18,cy-18,2,cx,cy,52);
+  orbGrad.addColorStop(0,'rgba(255,255,255,0.95)');
+  orbGrad.addColorStop(0.15,'rgba(220,180,255,0.9)');
+  orbGrad.addColorStop(0.5,'rgba(140,80,220,0.7)');
+  orbGrad.addColorStop(1,'rgba(60,20,120,0.5)');
+  ctx.beginPath();
+  ctx.arc(cx,cy,50,0,Math.PI*2);
+  ctx.fillStyle = orbGrad;
+  ctx.fill();
+
+  // Orb shine
+  const shine = ctx.createRadialGradient(cx-14,cy-14,0,cx-10,cy-10,30);
+  shine.addColorStop(0,'rgba(255,255,255,0.5)');
+  shine.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(cx,cy,50,0,Math.PI*2);
+  ctx.fillStyle = shine;
+  ctx.fill();
+
+  // Outer glow ring
+  ctx.beginPath();
+  ctx.arc(cx,cy,53,0,Math.PI*2);
+  ctx.strokeStyle = 'rgba(200,154,255,0.45)';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(200,154,255,0.6)';
+  ctx.shadowBlur = 14;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Central symbol
+  ctx.font = '28px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,240,200,0.95)';
+  ctx.fillText('✦', cx, cy);
+
+  // Draw highlight arc for current elimination position
+  if(highlightPos !== undefined){
+    const angle = (highlightPos / getTotalActive()) * Math.PI * 2 - Math.PI/2;
+    const r2 = 162;
+    ctx.beginPath();
+    ctx.arc(cx,cy,r2,angle-0.18,angle+0.18);
+    ctx.strokeStyle = 'rgba(255,80,120,0.9)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // Draw ring count label
+  ctx.font = '700 11px Space Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(200,154,255,0.45)';
+  ctx.fillText(`${numRings} RINGS`, cx, cy+62);
+}
+
+function getTotalActive(){
+  return [partnerState,childrenState,housingState,relState]
+    .reduce((s,st)=>s+st.filter(x=>x!=='elim').length, 0);
+}
+
+document.getElementById('fateCanvas').addEventListener('click', function(){
+  if(!predicting) return;
+  nextElimStep();
+});
+document.getElementById('ringsInput').addEventListener('input', ()=>drawOrb());
+
+// ========== PREDICTION ENGINE ==========
+function startPrediction(){
+  rings = parseInt(document.getElementById('ringsInput').value)||3;
+  if(rings<2)rings=2;
+  // Init states
+  partnerState = partners.map(()=>'');
+  childrenState = children.map(()=>'');
+  housingState = housing.map(()=>'');
+  relState = relationships.map(()=>'');
+  elimStep = 0;
+  eliminationLog = [];
+  predicting = true;
+  buildClockwiseOrder();
+  renderAll();
+  drawOrb();
+  document.getElementById('canvasHint').textContent = '✦ Click the orb to eliminate ✦';
+  updateStepInfo();
+}
+
+function buildClockwiseOrder(){
+  // Clockwise: top (partners L→R), right (housing top→bottom), bottom (rels R→L), left (children bottom→top)
+  allOptions = [];
+  partners.forEach((_,i)=> allOptions.push({group:'partner',idx:i}));
+  housing.forEach((_,i)=> allOptions.push({group:'housing',idx:i}));
+  [...relationships].reverse().forEach((_,i)=> allOptions.push({group:'rel',idx:relationships.length-1-i}));
+  [...children].reverse().forEach((_,i)=> allOptions.push({group:'children',idx:children.length-1-i}));
+}
+
+function getActiveOptions(){
+  return allOptions.filter(o=>{
+    const st = {partner:partnerState,children:childrenState,housing:housingState,rel:relState}[o.group];
+    return st[o.idx]!=='elim' && st[o.idx]!=='win';
+  });
+}
+
+function checkGroupDone(group){
+  const arr = {partner:partners,children,housing,rel:relationships}[group];
+  const st = {partner:partnerState,children:childrenState,housing:housingState,rel:relState}[group];
+  const active = arr.filter((_,i)=>st[i]!=='elim'&&st[i]!=='win');
+  return active.length<=1;
+}
+
+function nextElimStep(){
+  const active = getActiveOptions();
+  if(active.length===0){ revealFate(); return; }
+
+  // If only 1 left total, reveal
+  if(active.length===1){
+    const o=active[0];
+    const st={partner:partnerState,children:childrenState,housing:housingState,rel:relState}[o.group];
+    st[o.idx]='win';
+    renderAll();
+    revealFate();
+    return;
+  }
+
+  // Count `rings` steps forward, skip already eliminated
+  let count = 0;
+  let ptr = elimStep % active.length;
+  // We want to land on the (rings)th active item from current pointer
+  // Move pointer rings-1 MORE times (we start counting from next)
+  ptr = (ptr + rings - 1) % active.length;
+
+  const target = active[ptr];
+  const st = {partner:partnerState,children:childrenState,housing:housingState,rel:relState}[target.group];
+  st[target.idx] = 'elim';
+  eliminationLog.push(target);
+
+  // After elimination, check if group only has 1 left — mark winner
+  const grp = target.group;
+  const grpArr = {partner:partners,children,housing,rel:relationships}[grp];
+  const grpSt = {partner:partnerState,children:childrenState,housing:housingState,rel:relState}[grp];
+  const remaining = grpArr.filter((_,i)=>grpSt[i]!=='elim'&&grpSt[i]!=='win');
+  if(remaining.length===1){
+    const winIdx = grpArr.findIndex((_,i)=>grpSt[i]!=='elim'&&grpSt[i]!=='win');
+    if(winIdx>=0) grpSt[winIdx]='win';
+  }
+
+  // Update pointer: stay at ptr (since we removed one, next starts here)
+  elimStep = ptr % Math.max(1, getActiveOptions().length);
+
+  renderAll();
+  drawOrb(ptr);
+  updateStepInfo();
+
+  // Check all done
+  const allActive = getActiveOptions();
+  const allWon = ['partner','children','housing','rel'].every(g=>{
+    const st={partner:partnerState,children:childrenState,housing:housingState,rel:relState}[g];
+    const arr={partner:partners,children,housing,rel:relationships}[g];
+    return arr.some((_,i)=>st[i]==='win');
+  });
+  if(allWon||allActive.length===0){
+    setTimeout(revealFate, 600);
+  }
+}
+
+function updateStepInfo(){
+  const active = getActiveOptions();
+  document.getElementById('stepInfo').textContent = 
+    active.length>0 ? `${active.length} options remaining · eliminating every ${rings}${rings===1?'st':rings===2?'nd':rings===3?'rd':'th'}` : '';
+}
+
+function autoReveal(){
+  startPrediction();
+  let interval = setInterval(()=>{
+    const active = getActiveOptions();
+    if(active.length===0||['partner','children','housing','rel'].every(g=>{
+      const st={partner:partnerState,children:childrenState,housing:housingState,rel:relState}[g];
+      const arr={partner:partners,children,housing,rel:relationships}[g];
+      return arr.some((_,i)=>st[i]==='win');
+    })){
+      clearInterval(interval);
+      setTimeout(revealFate,400);
+      return;
+    }
+    nextElimStep();
+  }, 280);
+}
+
+function revealFate(){
+  predicting = false;
+  // Find winners
+  const winPartner = partners[partnerState.findIndex(s=>s==='win')] || partners[partnerState.findIndex(s=>s!=='elim')] || partners[0];
+  const winChild = children[childrenState.findIndex(s=>s==='win')] || children[childrenState.findIndex(s=>s!=='elim')] || children[0];
+  const winHouse = housing[housingState.findIndex(s=>s==='win')] || housing[housingState.findIndex(s=>s!=='elim')] || housing[0];
+  const winRel = relationships[relState.findIndex(s=>s==='win')] || relationships[relState.findIndex(s=>s!=='elim')] || relationships[0];
+
+  const pxName = personX||'Alex';
+  const sentence = buildFateSentence(pxName, winPartner, winChild, winHouse, winRel);
+  document.getElementById('fateSentence').innerHTML = sentence;
+  document.getElementById('fateResult').classList.add('show');
+  document.getElementById('canvasHint').textContent = '✦ Fate has been revealed ✦';
+}
+
+function buildFateSentence(px, partner, child, house, rel){
+  const childNum = parseInt(child);
+  const childStr = isNaN(childNum) ? `<strong>${child}</strong> children` : 
+    childNum===0 ? 'no children' :
+    childNum===1 ? '<strong>1 child</strong>' : `<strong>${child} children</strong>`;
+
+  const relPretty = rel.toLowerCase().replace('just friends (wink)','just friends (with benefits)');
+  let relStr;
+  if(rel.toLowerCase().includes('married')) relStr = `married to <strong>${partner}</strong>`;
+  else if(rel.toLowerCase().includes('cheated')) relStr = `in a chaotic on-again-off-again situation with <strong>${partner}</strong> (yes, someone cheated)`;
+  else if(rel.toLowerCase().includes('ncmo')) relStr = `in a mysterious NCMO situation with <strong>${partner}</strong>`;
+  else relStr = `<em>${relPretty}</em> with <strong>${partner}</strong>`;
+
+  const houseLower = house.toLowerCase();
+  const houseStr = houseLower==='no home' ? 'living off the grid (no home)' : `living in a <strong>${house.toLowerCase()}</strong>`;
+
+  return `<strong>${px}</strong> is destined to be ${relStr}, ${houseStr}, raising ${childStr}. The cosmos have spoken. 🌠`;
+}
+
+function closeFate(){
+  document.getElementById('fateResult').classList.remove('show');
+}
+
+function resetAll(){
+  predicting = false;
+  partnerState = partners.map(()=>'');
+  childrenState = children.map(()=>'');
+  housingState = housing.map(()=>'');
+  relState = relationships.map(()=>'');
+  elimStep = 0;
+  renderAll();
+  drawOrb();
+  document.getElementById('canvasHint').textContent = '✦ Click the orb to begin the elimination ✦';
+  document.getElementById('stepInfo').textContent = '';
+  document.getElementById('fateResult').classList.remove('show');
+}
+
+// ========== INIT ==========
+function init(){
+  partnerState = partners.map(()=>'');
+  childrenState = children.map(()=>'');
+  housingState = housing.map(()=>'');
+  relState = relationships.map(()=>'');
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
